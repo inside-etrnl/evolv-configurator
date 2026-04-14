@@ -23,7 +23,7 @@ const catalog = {
   notes: [
     'Drawers are listed as planned modules in 40, 60, and 80 cm widths with 30 cm depth and soft-close, but pricing is still marked coming soon.',
     'Every custom bay needs two spines, but neighboring bays share one middle spine, so total spines always equal bay count plus one.',
-    'The catalog does not include exact hole spacing, pin counts, or installation fixture dimensions, so this configurator keeps those as informational rather than calculated.',
+    'The catalog does not include exact hole spacing, pin counts, or installation fixture dimensions, so this shelving system keeps those as informational rather than calculated.',
     'Preview geometry uses a 25 mm spine width, 9 mm pin diameter, 70 mm hole spacing, and a 100 mm shelf profile with a 15 mm folded lip.',
   ],
 };
@@ -685,7 +685,7 @@ function loadFromShareLinkIfPresent() {
     history.replaceState(null, '', location.pathname + location.search);
     return true;
   } catch {
-    alert("This share link couldn't be loaded — it may be from an older version of the configurator or reference items that are no longer available.");
+    alert("This share link couldn't be loaded — it may be from an older version of the shelving system or reference items that are no longer available.");
     history.replaceState(null, '', location.pathname + location.search);
     return false;
   }
@@ -1871,7 +1871,7 @@ function renderPreviewInspector(slotCount) {
 
   const moduleTitle = selectedModule
     ? (selectedModule.type === 'drawer'
-        ? (selectedModule.variant === 'double' ? 'Drawer ×2' : 'Drawer')
+        ? (selectedModule.variant === 'double' ? 'Double Drawer' : 'Single Drawer')
         : `Shelf D${selectedModule.depth}`)
     : `${bayLabel} - W${selectedBay.width}`;
 
@@ -2388,7 +2388,7 @@ function renderPreview(summary) {
       const label = module?.type === 'shelf'
         ? `Shelf D${module.depth}${module.reversed ? ' · Flipped' : ''}`
         : module?.type === 'drawer'
-          ? (module.variant === 'double' ? 'Drawer ×2' : 'Drawer')
+          ? (module.variant === 'double' ? 'Double Drawer' : 'Single Drawer')
           : 'Module';
       dragState = {
         bayId,
@@ -2984,7 +2984,7 @@ function wireControls() {
           sidebarDragStarted = true;
           const sidebarLabel = componentType.startsWith('shelf-')
             ? `Shelf D${componentType.split('-')[1]}`
-            : componentType === 'drawer-single' ? 'Drawer' : 'Drawer ×2';
+            : componentType === 'drawer-single' ? 'Single Drawer' : 'Double Drawer';
           dragState = {
             bayId: null,
             moduleIndex: null,

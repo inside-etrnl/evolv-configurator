@@ -1,3 +1,50 @@
+/* ──────────────────────────────────────────────────────────────────────
+   Self-hosted fonts (replaces Google Fonts CDN to keep the app offline-safe
+   and privacy-preserving — no third-party font requests).
+   Files live in ./fonts/. Inter is served as a variable font, so one file
+   covers all weights 400–800 via `font-weight: 100 900` range.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Inter — latin subset */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Inter — latin-ext subset (European accented characters, Euro symbol extras) */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Dela Gothic One — brand display font, latin subset */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/dela-gothic-one-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Dela Gothic One — latin-ext subset */
+@font-face {
+  font-family: 'Dela Gothic One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/dela-gothic-one-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 :root {
   --bg-page: #ffffff;
   --bg-panel: rgba(255, 255, 255, 0.96);
@@ -14,8 +61,14 @@
   --radius-xl: 24px;
   --radius-lg: 18px;
   --radius-md: 12px;
+  /* Display font (section headers, buttons, titles, price totals) — Inter.
+     Body font (hint text, inputs, small labels) — Inter.
+     Brand font (ETRNL Evolv wordmark only) — Dela Gothic One, with Inter as
+     a fallback if the woff2 file fails to load. Keeping the chunky display
+     font confined to the brand block preserves readability everywhere else. */
   --font-display: "Inter", sans-serif;
   --font-body: "Inter", sans-serif;
+  --font-brand: "Dela Gothic One", "Inter", sans-serif;
   --type-small: 0.72rem;
   --type-medium: 0.9rem;
   --type-large: 1.2rem;
@@ -359,6 +412,12 @@ body {
 }
 
 .preview-inspector:empty {
+  display: none;
+}
+
+/* Hide the separator in front of the inline inspector when the inspector
+   itself is empty — avoids a dangling vertical rule. */
+.inspector-sep:has(+ .preview-inspector:empty) {
   display: none;
 }
 
@@ -1982,13 +2041,15 @@ html.is-module-dragging * {
 
 /* ── TOP BAR ────────────────────────────────────────────────── */
 .top-bar {
+  /* min-height (not height) lets the bar grow when `.top-bar-left` wraps
+     onto a second row at narrow viewports. Vertical padding gives breathing
+     room so wrapped controls don't hug the edges. */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 20px;
-  height: 68px;
-  min-height: 52px;
+  padding: 8px 20px;
+  min-height: 68px;
   background: var(--bg-panel-strong);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
@@ -2010,17 +2071,27 @@ html.is-module-dragging * {
 }
 
 .top-bar-name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  /* Dela Gothic One is only supplied at weight 400 — avoid faux-bold synthesis
+     by not setting a heavier weight. Mixed-case ("ETRNL Evolv") is rendered as
+     written in the HTML; no text-transform. Tight letter-spacing suits the
+     chunky letterforms at larger sizes. */
+  font-family: var(--font-brand);
+  font-size: 1.9rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1;
 }
 
 .top-bar-sub {
-  font-size: 0.75rem;
+  font-family: var(--font-brand);
+  font-size: 1.25rem;
+  font-weight: 400;
   color: var(--text-soft);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  line-height: 1.05;
+  margin-top: 2px;
 }
 
 .top-bar-controls {
@@ -2264,31 +2335,28 @@ html.is-module-dragging * {
 
 /* ── TOP BAR: left/right split ───────────────────────────────── */
 .top-bar {
+  /* Tight vertical padding (4px) buys vertical space for the brand block
+     to grow while keeping the 68px min-height the same — the bigger brand
+     mark sits closer to the top/bottom edges rather than pushing the bar
+     taller. */
   justify-content: space-between;
   gap: 0;
-  padding: 0 16px 0 16px;
+  padding: 4px 16px;
   position: relative;
 }
 
 .top-bar-left {
+  /* Wrap to a second row when controls don't fit (narrow viewports, Shopify
+     iframe widths). Previously used `overflow-x: auto` which produced an
+     ugly horizontal scrollbar when the bigger brand mark pushed items past
+     the edge. */
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  overflow-x: auto;
+  row-gap: 6px;
   flex: 1;
   min-width: 0;
-}
-
-.top-bar-center {
-  position: absolute;
-  left: calc(50% + 200px);
-  top: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
-}
-
-.app-shell[data-sidebar-state='closed'] .top-bar-center {
-  left: 50%;
 }
 
 .top-bar-right {
@@ -2565,4 +2633,92 @@ html.is-module-dragging * {
 
 .apply-wall-btn:not(:disabled):hover {
   opacity: 0.85;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DESKTOP-REQUIRED GATE — shown below 1100px viewport width.
+   Hides the app shell and shows a "please use a laptop" card
+   instead. Pure CSS, no JS. Keeps phones, tablets, and the
+   very narrowest windows from seeing a broken experience.
+   Threshold is 1100 (not 1300) because our primary Indian
+   market runs a lot of 1366x768 budget laptops, some at 125%
+   Windows scaling which collapses the viewport to ~1093px.
+   Locking those users out of the configurator entirely is a
+   worse experience than the mildly cramped header wrap they
+   see when selecting a shelf bay in the 1100-1299 band.
+   Core workflow (click bays, view canvas, read prices,
+   export PDF, share design) works at all widths >= 1100px.
+   ═══════════════════════════════════════════════════════════ */
+.desktop-required {
+  display: none;
+}
+
+@media (max-width: 1099px) {
+  .app-shell {
+    display: none !important;
+  }
+  .desktop-required {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--bg-page);
+    color: var(--text-main);
+    z-index: 9999;
+  }
+  .desktop-required-inner {
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .desktop-required-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .desktop-required-name {
+    font-family: var(--font-brand);
+    font-size: 1.9rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    color: var(--text-main);
+  }
+  .desktop-required-sub {
+    font-family: var(--font-brand);
+    font-size: 1.15rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+    color: var(--text-soft);
+  }
+  .desktop-required-icon {
+    width: 72px;
+    height: 54px;
+    color: var(--text-soft);
+    margin-top: 4px;
+  }
+  .desktop-required-headline {
+    font-family: var(--font-body);
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+    color: var(--text-main);
+  }
+  .desktop-required-message {
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.5;
+    margin: 0;
+    color: var(--text-soft);
+  }
 }

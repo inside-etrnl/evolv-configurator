@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ETRNL Evolv Configurator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>ETRNL Evolv Shelving System</title>
+  <!-- Fonts self-hosted in ./fonts/ (see configurator.css @font-face rules).
+       No third-party font requests — fully offline-safe and privacy-preserving. -->
+  <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="configurator.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
       <div class="top-bar-left">
         <button id="brand-reset" class="top-bar-brand" type="button" title="Reset to default">
           <span class="top-bar-name">ETRNL Evolv</span>
-          <span class="top-bar-sub">Configurator</span>
+          <span class="top-bar-sub">Shelving System</span>
         </button>
 
         <div class="top-bar-sep"></div>
@@ -70,10 +70,10 @@
         </label>
         <input id="top-line-input" type="number" style="display:none" value="1540">
         <span id="top-line-label" style="display:none"></span>
-      </div>
 
-      <!-- Center group: contextual inspector -->
-      <div class="top-bar-center">
+        <div class="top-bar-sep inspector-sep"></div>
+
+        <!-- Contextual inspector — sits inline to the right of Spine Height -->
         <div id="preview-inspector" class="preview-inspector"></div>
       </div>
 
@@ -223,6 +223,33 @@
 
     </div><!-- .main-area -->
   </div><!-- .app-shell -->
+
+  <!-- ═══════════════════════════════════════════════════════════
+       DESKTOP-REQUIRED SCREEN — shown below 900px viewport width
+       via CSS media query. Hides .app-shell and shows this message
+       instead. Pure CSS, no JS. Keeps mobile/tablet-portrait users
+       from seeing a half-broken experience.
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="desktop-required" aria-hidden="true">
+    <div class="desktop-required-inner">
+      <div class="desktop-required-brand">
+        <span class="desktop-required-name">ETRNL Evolv</span>
+        <span class="desktop-required-sub">Shelving System</span>
+      </div>
+      <svg class="desktop-required-icon" viewBox="0 0 64 48" fill="none" aria-hidden="true">
+        <rect x="6" y="4" width="52" height="34" rx="3" stroke="currentColor" stroke-width="2"/>
+        <rect x="11" y="9" width="42" height="24" fill="currentColor" opacity="0.08"/>
+        <path d="M2 42h60" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M26 42l2 4h8l2-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1 class="desktop-required-headline">Design your shelving on a laptop</h1>
+      <p class="desktop-required-message">
+        The ETRNL Evolv Shelving System is built for precise pointer control
+        and larger screens. Please revisit this page on a laptop or desktop
+        to design your setup, export a PDF, and share your design.
+      </p>
+    </div>
+  </div>
 
   <script src="vendor/html2canvas.min.js"></script>
   <script src="vendor/jspdf.umd.min.js"></script>
