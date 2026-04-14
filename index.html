@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETRNL Evolv Configurator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="configurator.css">
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         TOP BAR — brand + all controls LEFT · total price RIGHT
+         ═══════════════════════════════════════════════════════════ -->
+    <header class="top-bar">
+
+      <!-- Left group: brand + all controls -->
+      <div class="top-bar-left">
+        <button id="brand-reset" class="top-bar-brand" type="button" title="Reset to default">
+          <span class="top-bar-name">ETRNL Evolv</span>
+          <span class="top-bar-sub">Configurator</span>
+        </button>
+
+        <div class="top-bar-sep"></div>
+
+        <!-- Color toggle -->
+        <div class="finish-toggle" role="group" aria-label="Color">
+          <span class="top-bar-field-label">Color</span>
+          <div class="finish-btn-row">
+            <button class="finish-btn active" data-finish="White" type="button">White</button>
+            <button class="finish-btn" data-finish="Black" type="button">Black</button>
+          </div>
+        </div>
+
+        <div class="top-bar-sep"></div>
+
+        <!-- Wall Width -->
+        <label class="top-bar-field">
+          <span id="wall-width-label">Wall Width (cm)</span>
+          <input id="wall-width" type="text" inputmode="numeric" value="180">
+        </label>
+
+        <!-- Wall Height -->
+        <label class="top-bar-field">
+          <span id="wall-height-label">Wall Height (cm)</span>
+          <input id="wall-height" type="text" inputmode="numeric" value="120">
+        </label>
+
+        <!-- Apply button — enabled only when inputs differ from applied values -->
+        <button id="apply-wall-btn" class="apply-wall-btn" type="button" disabled>Apply</button>
+
+        <!-- Unit toggle — hidden but logic kept intact for future use -->
+        <label class="top-bar-field" style="display:none">
+          <span>Units</span>
+          <select id="unit-select">
+            <option value="cm">cm</option>
+            <option value="in">in</option>
+          </select>
+        </label>
+
+        <div class="top-bar-sep"></div>
+
+        <!-- Spine Height -->
+        <label class="top-bar-field">
+          <span>Spine Height (cm)</span>
+          <select id="spine-select"></select>
+        </label>
+        <input id="top-line-input" type="number" style="display:none" value="1540">
+        <span id="top-line-label" style="display:none"></span>
+      </div>
+
+      <!-- Center group: contextual inspector -->
+      <div class="top-bar-center">
+        <div id="preview-inspector" class="preview-inspector"></div>
+      </div>
+
+      <!-- Right group: total price trigger + dropdown -->
+      <div class="top-bar-right">
+        <button class="top-bar-total-trigger" id="price-dropdown-toggle" type="button" aria-expanded="false">
+          <span class="top-bar-total-label">Total</span>
+          <span class="estimator-value estimator-total-value top-bar-total-value" id="stat-total">₹0</span>
+          <svg class="top-bar-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Price dropdown panel -->
+        <div id="price-dropdown" class="price-dropdown-panel" hidden>
+          <div class="stats-grid stage-stats">
+            <article class="stat-card">
+              <span>Total width</span>
+              <strong id="stat-width">0 cm</strong>
+            </article>
+            <article class="stat-card">
+              <span>Spines</span>
+              <strong id="stat-spines">0</strong>
+            </article>
+            <article class="stat-card">
+              <span>Shelves</span>
+              <strong id="stat-shelves">0</strong>
+            </article>
+          </div>
+          <article class="stage-estimator">
+            <div class="stage-estimator-head">
+              <h3>Parts Estimate</h3>
+              <span id="stage-estimator-note" class="stage-estimator-note">Live parts list</span>
+            </div>
+            <div id="bom-list" class="summary-list estimator-list"></div>
+            <div class="estimator-row estimator-row-total">
+              <div class="estimator-copy">
+                <div class="estimator-label">Total</div>
+              </div>
+              <div class="estimator-qty"></div>
+              <div class="estimator-total-wrap">
+                <button class="estimator-value estimator-total-value estimator-total-button"
+                        id="stat-total-bom" type="button"
+                        aria-expanded="false" aria-controls="total-currency-menu">₹0</button>
+                <div id="total-currency-menu" class="estimator-currency-menu" hidden></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MAIN AREA — three columns: sidebar | canvas | right panel
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="main-area">
+
+      <!-- ─── LEFT SIDEBAR ─────────────────────────────────────── -->
+      <aside id="config-sidebar" class="config-sidebar">
+        <div class="sidebar-scroll">
+
+          <!-- ── SECTION 1: COMPONENTS ── -->
+          <details class="sb-section" open>
+            <summary class="sb-section-header">
+              <span>Components</span>
+            </summary>
+            <div class="sb-section-body">
+              <p class="sb-hint" id="component-hint">Select a bay on the canvas, then click to add.</p>
+
+              <div class="sb-sublabel">Shelves</div>
+              <div class="component-tiles">
+                <button class="component-tile" data-add-component="shelf-15" type="button">
+                  <span class="tile-name">D15</span>
+                  <span class="tile-detail">Shelf</span>
+                </button>
+                <button class="component-tile" data-add-component="shelf-25" type="button">
+                  <span class="tile-name">D25</span>
+                  <span class="tile-detail">Shelf</span>
+                </button>
+                <button class="component-tile" data-add-component="shelf-35" type="button">
+                  <span class="tile-name">D35</span>
+                  <span class="tile-detail">Shelf</span>
+                </button>
+              </div>
+
+              <div class="sb-sublabel">Drawers</div>
+              <div class="component-tiles">
+                <button class="component-tile" data-add-component="drawer-single" type="button">
+                  <span class="tile-name">Single</span>
+                  <span class="tile-detail">Drawer</span>
+                </button>
+                <button class="component-tile" data-add-component="drawer-double" type="button">
+                  <span class="tile-name">Double</span>
+                  <span class="tile-detail">Drawer</span>
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <!-- ── SECTION 2: ACTIONS ── -->
+          <details class="sb-section" open>
+            <summary class="sb-section-header">
+              <span>Actions</span>
+            </summary>
+            <div class="sb-section-body">
+              <!-- Row 1: Clear (full width) -->
+              <button id="clear-btn" class="action-btn action-btn-secondary action-btn-full" type="button">Clear</button>
+              <!-- Row 2: Undo | Redo -->
+              <div class="action-row">
+                <button id="undo-btn" class="action-btn action-btn-secondary" type="button">Undo ⌘Z</button>
+                <button id="redo-btn" class="action-btn action-btn-secondary" type="button">Redo ⌘Y</button>
+              </div>
+              <div class="action-divider"></div>
+              <!-- Row 3: Export PDF | Share Design -->
+              <div class="action-row">
+                <button id="download-pdf" class="action-btn action-btn-secondary" type="button">Export PDF</button>
+                <button id="share-design-btn" class="action-btn action-btn-secondary" type="button">Share Design</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- Hidden elements kept for JS compatibility -->
+          <div hidden>
+            <button id="center-layout" type="button"></button>
+          </div>
+
+          <!-- Notes & Recommendations (hidden but JS still populates) -->
+          <div hidden>
+            <div id="recommendations"></div>
+            <div id="catalog-notes"></div>
+            <div id="kit-options"></div>
+          </div>
+
+        </div><!-- .sidebar-scroll -->
+      </aside>
+
+      <!-- ─── CENTER CANVAS ─────────────────────────────────────── -->
+      <main class="workspace-stage">
+        <div id="interaction-error" class="interaction-error" hidden></div>
+        <div class="preview-wrap preview-wrap-expanded stage-preview">
+          <div id="layout-preview" class="layout-preview" aria-label="Shelf layout preview"></div>
+        </div>
+      </main>
+
+      <!-- Right panel removed — content moved to top-bar price dropdown -->
+
+    </div><!-- .main-area -->
+  </div><!-- .app-shell -->
+
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="configurator.js"></script>
+</body>
+</html>
