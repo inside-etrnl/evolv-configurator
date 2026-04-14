@@ -1,0 +1,6 @@
+# macOS
+.DS_Store
+
+# Private working docs (synced via OneDrive, not GitHub)
+CLAUDE.md
+INSTRUCTIONS.md
