@@ -13,15 +13,19 @@ const catalog = {
     60: { 15: 2000, 25: 2700, 35: 3300 },
     80: { 15: 2400, 25: 3200, 35: 3900 },
   },
+  drawers: {
+    single: { 40: 19400, 60: 22400, 80: 25400 },
+    double: { 40: 25800, 60: 29100, 80: 32300 },
+  },
   kits: [
-    { id: 'kit-a', label: 'Kit A', width: 40, topDepth: 15, bottomDepth: 15, spineHeight: 42, price: 4400, description: 'Compact bedside or entryway starter.' },
+    { id: 'kit-a', label: 'Kit A', width: 40, topDepth: 15, bottomDepth: 15, spineHeight: 42, price: 4500, description: 'Compact bedside or entryway starter.' },
     { id: 'kit-b', label: 'Kit B', width: 60, topDepth: 15, bottomDepth: 15, spineHeight: 63, price: 5500, description: 'Balanced desk, kitchen, or display setup.' },
     { id: 'kit-c', label: 'Kit C', width: 60, topDepth: 15, bottomDepth: 25, spineHeight: 63, price: 6100, description: 'Mix of shallow top and deeper bottom shelf.' },
-    { id: 'kit-d', label: 'Kit D', width: 80, topDepth: 15, bottomDepth: 15, spineHeight: 63, price: 6100, description: 'Wide display or bookshelf starter.' },
-    { id: 'kit-e', label: 'Kit E', width: 80, topDepth: 15, bottomDepth: 25, spineHeight: 63, price: 6900, description: 'Most versatile wide starter kit in the catalog.' },
+    { id: 'kit-d', label: 'Kit D', width: 80, topDepth: 15, bottomDepth: 15, spineHeight: 63, price: 6200, description: 'Wide display or bookshelf starter.' },
+    { id: 'kit-e', label: 'Kit E', width: 80, topDepth: 15, bottomDepth: 25, spineHeight: 63, price: 7000, description: 'Most versatile wide starter kit in the catalog.' },
   ],
   notes: [
-    'Drawers are listed as planned modules in 40, 60, and 80 cm widths with 30 cm depth and soft-close, but pricing is still marked coming soon.',
+    'Drawers are offered in 40, 60, and 80 cm widths as single (1D) or double (2D) modules at 30 cm depth with soft-close.',
     'Every custom bay needs two spines, but neighboring bays share one middle spine, so total spines always equal bay count plus one.',
     'The catalog does not include exact hole spacing, pin counts, or installation fixture dimensions, so this shelving system keeps those as informational rather than calculated.',
     'Preview geometry uses a 25 mm spine width, 9 mm pin diameter, 70 mm hole spacing, and a 100 mm shelf profile with a 15 mm folded lip.',
@@ -42,6 +46,13 @@ const SHELF_THICKNESS_MM = 1.5;
 const SHELF_LIP_MM = 15;
 const DRAWER_HEIGHT_MM = 320; // physical + visual height of a (single or double) drawer
 const DEFAULT_TOP_SHELF_MM = 1700;
+// Taller spines require a larger floor clearance — wall skirting typically
+// eats ~10 cm, and these spines need working room above it. Shorter spines
+// (H105 and below) retain the 10 cm minimum via MIN_FLOOR_CLEARANCE_MM.
+const TALL_SPINE_HEIGHTS_CM = [147, 189];
+const TALL_SPINE_FLOOR_CLEARANCE_MM = 300; // 30 cm
+const DEFAULT_FLOOR_CLEARANCE_MM = 100;    // 10 cm
+const MIN_TOP_CLEARANCE_MM = 160;          // 16 cm — used when auto-growing wall height (gives bay captions breathing room at tall-spine defaults)
 const DEFAULT_HUMAN_REFERENCE_CM = 178;
 const EUR_TO_INR_REFERENCE = 98.91;
 const USD_TO_INR_REFERENCE = 85.60;
@@ -575,7 +586,7 @@ function formatConvertedCurrency(value, currency) {
 
 function formatTotalValue(summary, currency = state.totalCurrency) {
   const value = formatConvertedCurrency(summary.total, currency);
-  return summary.hasDrawerPricingGap ? `${value} + drawers` : value;
+  return summary.hasPricingGap ? `${value} + price-on-request modules` : value;
 }
 
 function getShippingDisplay(summary, currency = state.totalCurrency) {
@@ -806,9 +817,20 @@ function getBottomDimensionAnchorPx(summary, footprintLeftPx, pxPerMm) {
   return footprintLeftPx + ((offsetMm + (SPINE_WIDTH_MM / 2)) * pxPerMm);
 }
 
+function getMinFloorClearanceMm(spineHeightCm = state.spineHeight) {
+  return TALL_SPINE_HEIGHTS_CM.includes(spineHeightCm)
+    ? TALL_SPINE_FLOOR_CLEARANCE_MM
+    : DEFAULT_FLOOR_CLEARANCE_MM;
+}
+
 function getCenteredTopShelfMm() {
   const wallHeightMm = Math.max(1, state.wallHeight * 10);
   const spineHeightMm = Math.max(HOLE_PITCH_MM, state.spineHeight * 10);
+  // Tall spines (H147, H189) anchor to a fixed 30 cm floor clearance instead
+  // of centering — wall skirting makes anything less impractical.
+  if (TALL_SPINE_HEIGHTS_CM.includes(state.spineHeight)) {
+    return clampTopShelfMm(spineHeightMm + TALL_SPINE_FLOOR_CLEARANCE_MM);
+  }
   const centeredFloorClearanceMm = Math.max(0, (wallHeightMm - spineHeightMm) / 2);
   return clampTopShelfMm(spineHeightMm + centeredFloorClearanceMm);
 }
@@ -823,7 +845,7 @@ function getPartSubtitle(part, currency = state.totalCurrency) {
 
 function getEstimateParts(summary) {
   const parts = new Map();
-  const addPart = (key, label, meta, quantity, amount, priced = true) => {
+  const addPart = (key, label, meta, quantity, amount, priced = true, sku = '') => {
     const existing = parts.get(key);
     if (existing) {
       existing.quantity += quantity;
@@ -832,6 +854,7 @@ function getEstimateParts(summary) {
       return;
     }
     parts.set(key, {
+      sku,
       label,
       meta,
       quantity,
@@ -842,10 +865,12 @@ function getEstimateParts(summary) {
 
   addPart(
     `spine-${summary.selectedSpine.code}-${state.finish}`,
-    `${summary.selectedSpine.code} spine`,
+    `${summary.selectedSpine.code} Spine`,
     `${state.finish} • ${formatLengthCm(summary.selectedSpine.height)}`,
     summary.totalSpines,
     summary.spineTotal,
+    true,
+    `ELV-SP-${summary.selectedSpine.code}`,
   );
 
   state.bays.forEach((bay) => {
@@ -857,17 +882,22 @@ function getEstimateParts(summary) {
           `${state.finish} • U shelf`,
           1,
           catalog.shelves[bay.width][module.depth],
+          true,
+          `ELV-SH-W${bay.width}-D${module.depth}`,
         );
       } else {
-        // Drawers — price TBD. Single and double tracked separately.
+        // Drawers — priced by variant (single/double) × bay width.
         const isDouble = module.variant === 'double';
+        const variantKey = isDouble ? 'double' : 'single';
+        const variantCode = isDouble ? '2D' : '1D';
         addPart(
-          `drawer-${isDouble ? 'double' : 'single'}-${bay.width}`,
-          `${isDouble ? 'Double ' : ''}Drawer W${bay.width}`,
-          `${state.finish} • Price TBD`,
+          `drawer-${variantKey}-${bay.width}`,
+          `${isDouble ? 'Double' : 'Single'} Drawer W${bay.width}`,
+          `${state.finish} • Soft-close`,
           1,
-          0,
-          false, // marks as unpriced → shows "Price TBD" in estimate
+          catalog.drawers[variantKey][bay.width],
+          true,
+          `ELV-DR-${variantCode}-W${bay.width}`,
         );
       }
     });
@@ -922,11 +952,72 @@ function createPdfPreviewPanel() {
       node.style.boxSizing = 'border-box';
     });
     // Strip selection state from cloned bays — the dashed selection rectangle
-    // (driven by .is-selected ::after) is a dynamic UI element that should
-    // never appear in the export.
+    // comes from BOTH `.preview-module-ring` child elements AND the
+    // `.preview-bay-shell.is-selected::after` pseudo-element. Remove the ring
+    // children, strip every `is-selected` class, and inject a scoped <style>
+    // into the clone as a belt-and-suspenders override in case html2canvas
+    // caches the original stylesheet state.
+    previewCanvas.querySelectorAll('.preview-module-ring').forEach((node) => {
+      node.remove();
+    });
     previewCanvas.querySelectorAll('.is-selected').forEach((node) => {
       node.classList.remove('is-selected');
     });
+    const overrideStyle = document.createElement('style');
+    overrideStyle.textContent = `
+      .preview-bay-shell::after,
+      .preview-bay-shell.is-selected::after,
+      .preview-module-btn::after,
+      .preview-module-btn.is-selected::after { content: none !important; border: 0 !important; display: none !important; }
+      .preview-module-ring { display: none !important; }
+      .preview-module[data-type="drawer"],
+      .preview-module[data-type="drawer"].is-double-drawer { background: #d6d6d6 !important; background-image: none !important; }
+    `;
+    previewCanvas.insertBefore(overrideStyle, previewCanvas.firstChild);
+
+    // html2canvas struggles with layered backgrounds (linear-gradient stacked
+    // on a base color) — the double drawer's midline divider renders as a
+    // darker wash across the whole cell instead of a clean line. Fully
+    // demote the double-drawer styling to real child elements: strip the
+    // `.is-double-drawer` class so its gradient background and ::after second
+    // handle disappear, then inject a divider line plus a second handle pill
+    // manually so the PDF renders the same two-drawer face as the live canvas.
+    previewCanvas.querySelectorAll('.preview-module[data-type="drawer"]').forEach((drawer) => {
+      drawer.style.setProperty('background', '#d6d6d6', 'important');
+      drawer.style.setProperty('background-image', 'none', 'important');
+      if (drawer.classList.contains('is-double-drawer')) {
+        drawer.classList.remove('is-double-drawer');
+        drawer.setAttribute('data-double-drawer-pdf', '1');
+        // Real-DOM midline divider — replaces the gradient band.
+        const divider = document.createElement('div');
+        divider.style.cssText = 'position:absolute;left:0;right:0;top:calc(50% - 1px);height:2px;background:rgba(23,23,23,0.58);pointer-events:none;z-index:1;';
+        drawer.appendChild(divider);
+        // Two real-DOM handle pills (one per face) — replaces both the
+        // ::before and ::after pseudos, which are now unreliable after the
+        // class strip and html2canvas's pseudo handling.
+        const handleUpper = document.createElement('div');
+        handleUpper.style.cssText = 'position:absolute;top:11%;left:50%;transform:translateX(-50%);width:30%;min-width:36px;height:11px;background:rgba(23,23,23,0.72);border-radius:1px;pointer-events:none;z-index:2;';
+        drawer.appendChild(handleUpper);
+        const handleLower = document.createElement('div');
+        handleLower.style.cssText = 'position:absolute;top:61%;left:50%;transform:translateX(-50%);width:30%;min-width:36px;height:11px;background:rgba(23,23,23,0.72);border-radius:1px;pointer-events:none;z-index:2;';
+        drawer.appendChild(handleLower);
+        // Re-center the label inside the upper face (between the upper
+        // handle and the midline divider) via inline style — sidesteps any
+        // selector-specificity issues with the stripped class.
+        const copy = drawer.querySelector('.preview-module-copy');
+        if (copy) {
+          copy.style.setProperty('top', '28%', 'important');
+        }
+      }
+    });
+    // Hide the pseudo-element handles on the stripped double drawers so they
+    // don't fight the real-DOM pills we just injected.
+    const drawerHandleStyle = document.createElement('style');
+    drawerHandleStyle.textContent = `
+      .preview-module[data-type="drawer"][data-double-drawer-pdf]::before,
+      .preview-module[data-type="drawer"][data-double-drawer-pdf]::after { content: none !important; display: none !important; }
+    `;
+    previewCanvas.insertBefore(drawerHandleStyle, previewCanvas.firstChild);
 
     // Measure the LIVE plane and scale the cloned canvas to fill the sheet
     // width as much as possible. No outer wall-dimension annotations — the
@@ -1068,7 +1159,7 @@ function createPdfPage2Sheet(summary, generatedAt) {
 
   const partRowsHtml = parts.map((part) => `
     <tr style="background:#ffffff;">
-      <td style="${cellStyle}color:#5f5f5f;width:120px;"></td>
+      <td style="${cellStyle}color:#5f5f5f;width:150px;font-family:'Inter',monospace;font-size:13px;">${escapePdfHtml(part.sku || '')}</td>
       <td style="${cellStyle}font-weight:700;">${escapePdfHtml(part.label)}</td>
       <td style="${cellStyle}width:70px;">${part.quantity}</td>
       <td style="${cellStyle}text-align:right;width:130px;">${unitPriceFor(part)}</td>
@@ -1092,7 +1183,7 @@ function createPdfPage2Sheet(summary, generatedAt) {
     <div style="display:grid;gap:28px;">
       <div style="display:grid;gap:8px;">
         <h1 style="margin:0;font-family:'Inter', sans-serif;font-size:42px;letter-spacing:-0.04em;line-height:1.05;font-weight:800;color:#171717;">Parts List</h1>
-        <p style="margin:0;color:#5f5f5f;font-size:15px;">ID: ${formatPdfShortId(generatedAt)}${summary.hasDrawerPricingGap ? ' • Drawers priced separately' : ''}</p>
+        <p style="margin:0;color:#5f5f5f;font-size:15px;">ID: ${formatPdfShortId(generatedAt)}${summary.hasPricingGap ? ' • Price-on-request modules' : ''}</p>
       </div>
       <table style="width:100%;border-collapse:collapse;">
         <thead>
@@ -1181,9 +1272,10 @@ function clampSpineToWall() {
 function getTopShelfBoundsMm() {
   const wallHeightMm = Math.max(1, state.wallHeight * 10);
   const spineHeightMm = Math.max(HOLE_PITCH_MM, state.spineHeight * 10);
-  const MIN_FLOOR_CLEARANCE_MM = 100; // 10 cm minimum from spine bottom to floor
+  // 10 cm for short spines, 30 cm for tall spines (H147, H189).
+  const minFloorClearanceMm = getMinFloorClearanceMm();
   return {
-    min: Math.min(spineHeightMm + MIN_FLOOR_CLEARANCE_MM, wallHeightMm),
+    min: Math.min(spineHeightMm + minFloorClearanceMm, wallHeightMm),
     max: wallHeightMm,
   };
 }
@@ -1369,10 +1461,12 @@ function updateBayWidth(bayId, width) {
   pushHistory();
   state.selectedKitId = null;
   state.bays = state.bays.map((bay) => bay.id === bayId ? { ...bay, width } : bay);
-  // Auto-expand wall width if new layout exceeds current wall
-  const MIN_CLEARANCE_MM = 50;
+  // Auto-expand wall width if new layout exceeds current wall.
+  // Default target is 20 cm clearance per side; the user can later tighten
+  // this down to the 5 cm hard minimum enforced by the Apply button.
+  const DEFAULT_SIDE_CLEARANCE_MM = 200;
   const newLayoutWidthMm = getLayoutWidthMm(calculateSummary());
-  const minWallWidthMm = newLayoutWidthMm + MIN_CLEARANCE_MM * 2;
+  const minWallWidthMm = newLayoutWidthMm + DEFAULT_SIDE_CLEARANCE_MM * 2;
   if (state.wallWidth * 10 < minWallWidthMm) {
     state.wallWidth = Math.ceil(minWallWidthMm / 10);
     lastAppliedWidth = state.wallWidth;
@@ -1974,14 +2068,23 @@ function calculateSummary() {
   );
 
   let moduleTotal = 0;
-  let hasDrawerPricingGap = false;
+  let hasPricingGap = false;
 
   state.bays.forEach((bay) => {
     bay.modules.forEach((module) => {
       if (module.type === 'shelf') {
         moduleTotal += catalog.shelves[bay.width][module.depth];
+      } else if (module.type === 'drawer') {
+        const variantKey = module.variant === 'double' ? 'double' : 'single';
+        const price = catalog.drawers?.[variantKey]?.[bay.width];
+        if (typeof price === 'number') {
+          moduleTotal += price;
+        } else {
+          hasPricingGap = true;
+        }
       } else {
-        hasDrawerPricingGap = true;
+        // Future module type with no price lookup yet — flag it as price-on-request.
+        hasPricingGap = true;
       }
     });
   });
@@ -1996,7 +2099,7 @@ function calculateSummary() {
     moduleTotal,
     spineTotal,
     total,
-    hasDrawerPricingGap,
+    hasPricingGap,
     selectedSpine,
   };
 }
@@ -2028,8 +2131,8 @@ function getRecommendations(summary) {
     items.push('You are using D35 shelves, which the catalog positions for plants, appliances, art books, and record players.');
   }
 
-  if (summary.hasDrawerPricingGap) {
-    items.push('Drawer pricing is still marked coming soon, so the total shown here excludes any drawer modules.');
+  if (summary.hasPricingGap) {
+    items.push('This configuration includes price-on-request modules, so the total shown here excludes those items.');
   }
 
   if (!items.length) {
@@ -2467,10 +2570,11 @@ function renderPreview(summary) {
       }
       state.selectedBayId = bay.id;
       state.selectedModuleIndex = null;
-      // Auto-expand wall width to fit all bays with minimum 50mm clearance each side
-      const MIN_CLEARANCE_MM = 50;
+      // Auto-expand wall width to fit all bays with 20 cm default clearance
+      // per side. 5 cm hard minimum is still enforced by the Apply button.
+      const DEFAULT_SIDE_CLEARANCE_MM = 200;
       const newLayoutWidthMm = getLayoutWidthMm(calculateSummary());
-      const minWallWidthMm = newLayoutWidthMm + MIN_CLEARANCE_MM * 2;
+      const minWallWidthMm = newLayoutWidthMm + DEFAULT_SIDE_CLEARANCE_MM * 2;
       if (state.wallWidth * 10 < minWallWidthMm) {
         state.wallWidth = Math.ceil(minWallWidthMm / 10);
         lastAppliedWidth = state.wallWidth;
@@ -2658,8 +2762,8 @@ function renderSummary(summary) {
 
   bomList.innerHTML = estimatorRows.join('');
   if (stageEstimatorNote) {
-    stageEstimatorNote.textContent = summary.hasDrawerPricingGap
-      ? 'Drawers priced separately'
+    stageEstimatorNote.textContent = summary.hasPricingGap
+      ? 'Price-on-request modules'
       : 'Live parts list';
   }
 
@@ -2837,10 +2941,12 @@ function wireControls() {
     state.selectedKitId = null;
     state.spineHeight = Number(event.target.value);
     setInteractionError('');
-    // Auto-expand wall height so floor clearance stays at least 10 cm each side
-    const MIN_SIDE_CLEARANCE_MM = 100;
+    // Auto-expand wall height so the spine fits with its required floor
+    // clearance (30 cm for tall spines, 10 cm for others) plus a 10 cm top
+    // clearance. If the user's wall is already taller than this minimum, we
+    // leave it alone and only re-anchor the floor.
     const spineHeightMm = state.spineHeight * 10;
-    const minWallHeightMm = spineHeightMm + MIN_SIDE_CLEARANCE_MM * 2;
+    const minWallHeightMm = spineHeightMm + getMinFloorClearanceMm() + MIN_TOP_CLEARANCE_MM;
     if (state.wallHeight * 10 < minWallHeightMm) {
       state.wallHeight = Math.ceil(minWallHeightMm / 10);
       lastAppliedHeight = state.wallHeight;
